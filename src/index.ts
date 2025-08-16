@@ -10,7 +10,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { createClient } from '@supabase/supabase-js';
-import { GoogleGenAI, HarmBlockThreshold, HarmCategory } from '@google/genai';
+import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
 
 // Schema for RAG chunk processing
 const RagChunkSchema = z.object({
@@ -50,7 +50,7 @@ const GenerateSyntheticInputsSchema = z.object({
 class McpServer {
   private server: Server;
   private supabase: any;
-  private genAI: GoogleGenAI;
+  private genAI: GoogleGenerativeAI;
 
   constructor() {
     this.server = new Server(
@@ -72,9 +72,7 @@ class McpServer {
 
     // Initialize Gemini AI (using environment variable)
     const geminiApiKey = process.env['GEMINI_API_KEY'] || 'placeholder-key';
-    this.genAI = new GoogleGenAI({
-      apiKey: geminiApiKey,
-    });
+    this.genAI = new GoogleGenerativeAI(geminiApiKey);
 
     this.setupToolHandlers();
     this.setupErrorHandling();
@@ -507,58 +505,24 @@ class McpServer {
       // Step 3: Query Gemini 2.5 Pro with dynamic system prompt
       console.error(`[FABRIK] Querying Gemini 2.5 Pro with config-based system prompt`);
       
-      const config = {
-        thinkingConfig: {
-          thinkingBudget: -1,
-        },
-        safetySettings: [
-          {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_NONE,
-          },
-        ],
-      };
-      
-      const model = 'gemini-2.5-pro';
-      const contents = [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: `${systemPrompt}\n\nUser Query: ${userQuery}`,
-            },
-          ],
-        },
-      ];
+      const fullPrompt = `${systemPrompt}\n\nUser Query: ${userQuery}`;
 
       console.error(`[FABRIK] Sending request to Gemini API...`);
       let generatedText = '';
       
       try {
         // Try streaming first
-        const response = await this.genAI.models.generateContentStream({
-          model,
-          config,
-          contents,
-        });
+        const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+        const response = await model.generateContentStream([
+          { text: fullPrompt }
+        ]);
         
         console.error(`[FABRIK] Processing Gemini response stream...`);
-        for await (const chunk of response) {
-          if (chunk.text) {
-            generatedText += chunk.text;
-            console.error(`[FABRIK] Received chunk: ${chunk.text.substring(0, 50)}...`);
+        for await (const chunk of response.stream) {
+          const chunkText = chunk.text();
+          if (chunkText) {
+            generatedText += chunkText;
+            console.error(`[FABRIK] Received chunk: ${chunkText.substring(0, 50)}...`);
           }
         }
         console.error(`[FABRIK] Gemini response complete. Length: ${generatedText.length}`);
@@ -568,14 +532,14 @@ class McpServer {
         
         // Fallback to non-streaming
         try {
-          const response = await this.genAI.models.generateContent({
-            model,
-            config,
-            contents,
-          });
+          const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
+          const response = await model.generateContent([
+            { text: fullPrompt }
+          ]);
           
-          if (response.text) {
-            generatedText = response.text;
+          const responseText = response.response.text();
+          if (responseText) {
+            generatedText = responseText;
             console.error(`[FABRIK] Non-streaming response complete. Length: ${generatedText.length}`);
           } else {
             throw new Error('No text in response');
