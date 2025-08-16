@@ -1,0 +1,70 @@
+# Synthetic Data Generation Results
+Generated: 2025-08-16T21:14:20.164Z
+Target Output Length: 1383 characters
+Synthetic Count: 5
+
+## MortyAI Configuration Used:
+- Agent Name: Morty
+- Agent Description: MortyAI agentic system for automating mortgage loan processing
+- Workflow: Document Intake & Extraction → RAG Reasoning → Document Completeness → Borrower Communication → Third-Party Communication → Loan Readiness Output
+- RAG Chunks: 6 chunks from Fannie Mae/Freddie Mac Selling Guide
+
+## Samantha Longo Data Used:
+- Borrower: Samantha Longo, Satellite 169 LLC
+- Monthly Income: $6,713.10 (Regular: $2,575.89, Overtime: $177.65, Tips: $3,959.56)
+- Assets: $0.00 (Critical red flag)
+- Liabilities: $0.00
+- Risk Assessment: Not eligible without down payment assistance
+
+## Target Output:
+**CRITICAL INCOME ANALYSIS:** Samantha's income consists of several components: Regular pay, Overtime, Bonuses, PTO, Retro Pay, and a significant portion from Charge Tips. To assess stability and continuity, we'll analyze her pay stubs for 2025 (YTD), 2024 (full year), and 2023 (full year), along with her W-2s.
+
+**Total Qualifying Monthly Income: $6,713.10**
+- Regular: $2,575.89
+- Overtime: $177.65  
+- Tips: $3,959.56
+
+**Asset Verification:** **Checking Account:** $0.00 - This is a **critical red flag**. Samantha has no liquid assets for a down payment, closing costs, or reserves. This will severely limit her eligibility for most traditional mortgage products.
+
+**Loan Product Qualification - The Primary Obstacle:**
+- **Conventional Loans:** Not Viable without Assets
+- **FHA Loans:** Not Viable without Assets  
+- **VA Loans:** Unlikely (no veteran status)
+- **USDA Loans:** Unlikely (Miami Beach, FL not rural)
+
+**Summary:** Samantha Longo demonstrates strong, stable income capacity ($6,713.10 monthly). However, her **zero liquid assets** are a critical impediment. She would **not qualify for standard conventional or FHA mortgage products** without a source of funds for down payment and closing costs.
+
+**Recommendation:** The borrower must identify a source for down payment and closing costs through Down Payment Assistance (DPA) programs or gift funds from family.
+
+## Generated Synthetic Inputs:
+
+1. Query: "Perform a full preliminary underwriting analysis on the application for Samantha Longo. Focus on income calculation and asset sufficiency for standard loan products."
+   Context: A loan officer is submitting a new, complete application package to the system for an initial automated review before manual underwriting.
+   Expected Focus: A comprehensive breakdown of qualifying income, asset verification, and an initial assessment of eligibility for common loan types.
+
+
+2. Query: "I'm reviewing the new file for Samantha Longo. Her income seems complex with a lot of tips, and her bank statement shows a zero balance. Can you analyze her file and determine if she's a viable candidate for a conventional or FHA loan?"
+   Context: A loan processor has done a quick manual scan of the documents and is asking the AI to confirm their initial concerns and run the official numbers.
+   Expected Focus: The query specifically points out the two critical issues (complex income, zero assets), so the agent is expected to focus its analysis and conclusion on these points.
+
+
+3. Query: "Give me the quick qualification summary for Samantha Longo's new application. Are there any major showstoppers or red flags I should be aware of?"
+   Context: A busy manager or loan officer wants a high-level summary to quickly decide if the loan application is worth pursuing or if it should be denied early.
+   Expected Focus: The agent should prioritize identifying and explaining the most critical issue, which is the lack of assets, while still providing the income context.
+
+
+4. Query: "Please calculate a stable qualifying monthly income for Samantha Longo using her W2s and recent paystubs. We need to account for her regular pay, overtime, and significant tip income."
+   Context: A user is focused on the most complex part of the application (the income) and asks for a specific calculation. However, in a mortgage context, an income calculation is useless without asset verification.
+   Expected Focus: While the primary request is about income, the agent should perform the calculation and then proactively analyze the rest of the file to put the income number into the proper context, leading it to discover and report the critical asset issue.
+
+
+5. Query: "Just uploaded the docs for Samantha Longo. Based on her financials, what are her chances of getting a mortgage? Break down the key issues for me."
+   Context: A user is interacting with the system in a more conversational, less formal manner, asking for a general assessment and a breakdown of problems.
+   Expected Focus: The system should interpret this open-ended query as a request for a full analysis, structuring the response to first calculate capacity (income) and then identify the primary obstacle (assets), summarizing the overall chances as requested.
+
+
+## Generation Metadata:
+- Model: gemini-2.5-pro
+- Success: true
+- Prompt Length: 5105 characters
+- Response Length: 3104 characters

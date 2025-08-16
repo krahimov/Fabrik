@@ -17,6 +17,7 @@
     "@google/generative-ai": "^0.24.1",
     "@modelcontextprotocol/sdk": "^0.6.1",
     "@supabase/supabase-js": "^2.55.0",
+    "fs": "^0.0.1-security",
     "mime": "^4.0.4",
     "zod": "^3.25.76"
   },

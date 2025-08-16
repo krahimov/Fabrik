@@ -11,6 +11,8 @@ import {
 import { z } from "zod";
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI, HarmBlockThreshold, HarmCategory } from '@google/generative-ai';
+// @ts-ignore
+import { mortyAIConfig } from '../loan_qualification_config.js';
 
 // Schema for RAG chunk processing
 const RagChunkSchema = z.object({
@@ -319,7 +321,14 @@ class McpServer {
 
           case "get_agent_config": {
             const parsed = GetConfigSchema.parse(args);
-            const config = await this.fetchAgentConfig(parsed.apiUrl, parsed.agentId, parsed.headers);
+            
+            // Return hardcoded MortyAI configuration with Samantha Longo data
+            const config = {
+              timestamp: new Date().toISOString(),
+              configId: parsed.agentId || 'morty-ai',
+              source: 'hardcoded',
+              ...mortyAIConfig
+            };
             
             return {
               content: [
@@ -493,11 +502,12 @@ class McpServer {
     };
   }
 
-  private async queryGeminiWithConfig(configId: string, userQuery: string, apiUrl: string, ragChunks?: z.infer<typeof RagChunkSchema>[]): Promise<any> {
+  private async queryGeminiWithConfig(configId: string, userQuery: string, _apiUrl: string, ragChunks?: z.infer<typeof RagChunkSchema>[]): Promise<any> {
     try {
       // Step 1: Fetch configuration from API
       console.error(`[FABRIK] Fetching config for ID: ${configId}`);
-      const configResponse = await this.fetchConfigById(configId, apiUrl);
+      // Use hardcoded MortyAI configuration with Samantha Longo data
+      const configResponse = mortyAIConfig;
       
       // Step 2: Build system prompt from configuration
       const systemPrompt = this.buildSystemPromptFromConfig(configResponse, ragChunks);
@@ -575,28 +585,7 @@ class McpServer {
     }
   }
 
-  private async fetchConfigById(configId: string, apiUrl: string): Promise<any> {
-    try {
-      const url = `${apiUrl}/${configId}`;
-      console.error(`[FABRIK] Fetching config from: ${url}`);
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-MCP-Client': 'FABRIK-v1.0'
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Config API request failed: ${response.status} ${response.statusText}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      throw new Error(`Failed to fetch config: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
+
 
   private buildSystemPromptFromConfig(config: any, ragChunks?: z.infer<typeof RagChunkSchema>[]): string {
     const systemPrompt = `# FABRIK AI Agent Configuration
@@ -671,72 +660,14 @@ You are now configured and ready to assist. Please respond to the following user
     }
   }
 
-  private async fetchAgentConfig(apiUrl: string, agentId?: string, headers?: Record<string, string>): Promise<any> {
-    try {
-      // Build URL with agentId if provided
-      const url = new URL(apiUrl);
-      if (agentId) {
-        url.searchParams.set('agentId', agentId);
-      }
 
-      // Prepare fetch options
-      const fetchOptions: RequestInit = {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'MCP-RAG-Processor/1.0',
-          ...(headers || {})
-        }
-      };
 
-      // Make the API request
-      const response = await fetch(url.toString(), fetchOptions);
-      
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      // Validate and structure the response
-      const config = {
-        timestamp: new Date().toISOString(),
-        apiUrl: url.toString(),
-        agentId: agentId || null,
-        data: data,
-        // Expected structure based on your requirements:
-        agent: {
-          name: data.agent?.name || data.agentName || 'Unknown Agent',
-          description: data.agent?.description || data.description || '',
-        },
-        workflow: {
-          steps: data.workflow?.steps || data.workflowSteps || [],
-          description: data.workflow?.description || data.workflowDescription || '',
-        },
-        output: {
-          naturalLanguageFormat: data.output?.naturalLanguageFormat || data.naturalLanguageOutput || '',
-          expectedFormat: data.output?.expectedFormat || data.expectedFormat || 'json',
-          syntheticRecordsCount: data.output?.syntheticRecordsCount || data.numberOfSyntheticRecords || 10,
-        },
-        ragChunks: data.ragChunks || data.chunks || [],
-        rawResponse: data
-      };
-
-      return config;
-    } catch (error) {
-      throw new McpError(
-        ErrorCode.InternalError,
-        `Failed to fetch agent configuration: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
-  }
-
-  private async generateSyntheticInputs(configId: string, targetOutput: string, apiUrl: string, syntheticCount: number): Promise<any> {
+  private async generateSyntheticInputs(configId: string, targetOutput: string, _apiUrl: string, syntheticCount: number): Promise<any> {
     try {
       console.error(`[FABRIK] Generating ${syntheticCount} synthetic inputs for config: ${configId}`);
       
-      // Fetch the agent configuration
-      const config = await this.fetchConfigById(configId, apiUrl);
+      // Use hardcoded MortyAI configuration with Samantha Longo data
+      const config = mortyAIConfig;
       
       // Create a system prompt for generating synthetic inputs
       const systemPrompt = `# Synthetic Input Generation Task
