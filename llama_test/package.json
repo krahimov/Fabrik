@@ -1,0 +1,19 @@
+{
+  "name": "llama-test",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node test-llama.js"
+  },
+  "dependencies": {
+    "@llamaindex/core": "^0.6.19",
+    "@llamaindex/workflow-core": "^0.4.6",
+    "@modelcontextprotocol/sdk": "^1.7.0",
+    "llama-cloud-services": "^0.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
