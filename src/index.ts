@@ -40,6 +40,13 @@ const GeminiWithConfigSchema = z.object({
   ragChunks: z.array(RagChunkSchema).optional(),
 });
 
+const GenerateSyntheticInputsSchema = z.object({
+  configId: z.string(),
+  targetOutput: z.string(),
+  apiUrl: z.string().url().optional().default("http://localhost:3002"),
+  syntheticCount: z.number().optional().default(10),
+});
+
 class McpServer {
   private server: Server;
   private supabase: any;
@@ -213,6 +220,35 @@ class McpServer {
               required: ["configId", "userQuery"],
             },
           },
+          {
+            name: "generate_synthetic_inputs",
+            description: "Generate synthetic inputs that would produce the target loan qualification output",
+            inputSchema: {
+              type: "object",
+              properties: {
+                configId: {
+                  type: "string",
+                  description: "Agent configuration ID (e.g., 'morty-ai')"
+                },
+                targetOutput: {
+                  type: "string",
+                  description: "The target loan qualification analysis output to reverse-engineer inputs for"
+                },
+                apiUrl: {
+                  type: "string",
+                  format: "uri",
+                  description: "API URL to fetch configuration from",
+                  default: "http://localhost:3002"
+                },
+                syntheticCount: {
+                  type: "number",
+                  description: "Number of synthetic inputs to generate",
+                  default: 10
+                }
+              },
+              required: ["configId", "targetOutput"]
+            }
+          },
         ],
       };
     });
@@ -300,6 +336,20 @@ class McpServer {
           case "gemini_with_config": {
             const parsed = GeminiWithConfigSchema.parse(args);
             const result = await this.queryGeminiWithConfig(parsed.configId, parsed.userQuery, parsed.apiUrl, parsed.ragChunks);
+            
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(result, null, 2),
+                },
+              ],
+            };
+          }
+
+          case "generate_synthetic_inputs": {
+            const parsed = GenerateSyntheticInputsSchema.parse(args);
+            const result = await this.generateSyntheticInputs(parsed.configId, parsed.targetOutput, parsed.apiUrl, parsed.syntheticCount);
             
             return {
               content: [
@@ -713,6 +763,118 @@ You are now configured and ready to assist. Please respond to the following user
       throw new McpError(
         ErrorCode.InternalError,
         `Failed to fetch agent configuration: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  private async generateSyntheticInputs(configId: string, targetOutput: string, apiUrl: string, syntheticCount: number): Promise<any> {
+    try {
+      console.error(`[FABRIK] Generating ${syntheticCount} synthetic inputs for config: ${configId}`);
+      
+      // Fetch the agent configuration
+      const config = await this.fetchConfigById(configId, apiUrl);
+      
+      // Create a system prompt for generating synthetic inputs
+      const systemPrompt = `# Synthetic Input Generation Task
+
+You are tasked with generating synthetic user inputs that would lead to the following target output for the ${config.agent?.name || 'MortyAI'} agent.
+
+## Agent Context:
+- Name: ${config.agent?.name || 'MortyAI'}
+- Description: ${config.agent?.description || 'Mortgage loan processing AI'}
+- Workflow: ${config.workflow?.description || 'Loan qualification analysis'}
+
+## Target Output to Reverse-Engineer:
+${targetOutput}
+
+## Available RAG Context:
+${config.ragChunks ? config.ragChunks.map((chunk: any, i: number) => `
+Document ${i + 1}: ${chunk.fileName} (Page ${chunk.pageLabel})
+Content: ${chunk.textPreview}
+`).join('\n') : 'No RAG chunks available'}
+
+## Task:
+Generate ${syntheticCount} diverse user inputs/queries that would naturally lead to the target output above. These should be:
+1. Realistic queries a user might ask
+2. Varied in phrasing and approach
+3. Specific enough to trigger the detailed analysis shown in the target output
+4. Related to the loan qualification scenario (Samantha Longo's case)
+
+## Output Format:
+Return a JSON array of synthetic inputs:
+{
+  "synthetic_inputs": [
+    {
+      "id": 1,
+      "query": "Analyze Samantha Longo's loan qualification based on her financial documents",
+      "context": "Initial loan application review",
+      "expected_focus": "Income analysis and asset verification"
+    }
+  ]
+}`;
+
+      // Query Gemini to generate synthetic inputs
+      const model = this.genAI.getGenerativeModel({ 
+        model: "gemini-2.5-pro",
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+          },
+        ],
+      });
+
+      const result = await model.generateContent([
+        { text: systemPrompt }
+      ]);
+
+      const response = result.response;
+      const generatedText = response.text();
+
+      // Try to parse JSON from the response
+      let syntheticInputs;
+      try {
+        // Extract JSON from the response if it's wrapped in markdown
+        const jsonMatch = generatedText.match(/```json\n([\s\S]*?)\n```/) || generatedText.match(/\{[\s\S]*\}/);
+        const jsonText = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : generatedText;
+        syntheticInputs = JSON.parse(jsonText);
+      } catch (parseError) {
+        // If JSON parsing fails, create a structured response
+        syntheticInputs = {
+          synthetic_inputs: [
+            {
+              id: 1,
+              query: "Analyze Samantha Longo's loan qualification based on her pay stubs and W-2s",
+              context: "Initial mortgage application review",
+              expected_focus: "Income verification and stability analysis"
+            }
+          ],
+          raw_response: generatedText
+        };
+      }
+
+      return {
+        success: true,
+        timestamp: new Date().toISOString(),
+        configId,
+        targetOutputLength: targetOutput.length,
+        syntheticCount,
+        result: syntheticInputs,
+        metadata: {
+          model: "gemini-2.5-pro",
+          promptLength: systemPrompt.length,
+          responseLength: generatedText.length
+        }
+      };
+      
+    } catch (error) {
+      throw new McpError(
+        ErrorCode.InternalError,
+        `Failed to generate synthetic inputs: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }

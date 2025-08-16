@@ -6,8 +6,11 @@
  */
 
 import { createServer } from 'http';
+import { mortyAIConfig } from './loan_qualification_config.js';
 
 const sampleConfigs = {
+  'morty-ai': mortyAIConfig,
+  'mortgage-advisor-v2': mortyAIConfig,
   'mortgage-agent': {
     agent: {
       name: 'Mortgage Lending Assistant',
